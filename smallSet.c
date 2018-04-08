@@ -5,25 +5,25 @@
 #include "csapp.h"
 
 
-
+/*
 int open_clientfd(char *hostname, int port) {
         int toserverfd;
         struct hostent *serverHostEntry;
         struct sockaddr_in serveraddr;
         if ((toserverfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-                return -1; /* check errno */
+                return -1; // check errno 
                 // AF_INET: internet; SOCK_STREAM: reliable; 0: normal
         }
-        /* Fill in the server.s IP address and port */
+        // Fill in the server.s IP address and port 
         if ((serverHostEntry = gethostbyname(hostname)) == NULL)
-                return -2; /* check h_errno for cause of error */
+                return -2; // check h_errno for cause of error 
         bzero((char *) &serveraddr, sizeof(serveraddr));
         serveraddr.sin_family = AF_INET;
         bcopy((char *)serverHostEntry->h_addr_list[0],
                         (char *)&serveraddr.sin_addr.s_addr,
                         serverHostEntry->h_length);
         serveraddr.sin_port = htons(port);
-        /* Establish a connection with the server */
+        // Establish a connection with the server 
         if (connect(toserverfd, (SA *) &serveraddr,
                                 sizeof(serveraddr)) < 0) {
                 return -1;
@@ -31,7 +31,7 @@ int open_clientfd(char *hostname, int port) {
         return toserverfd;
 } // open_clientfd
 
-
+*/
 
 
 
