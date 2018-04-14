@@ -4,38 +4,6 @@
 /* $begin echoserverimain */
 #include "csapp.h"
 
-/*int open_listenfd(int port) {
-	int listenfd, optval=1;
-	struct sockaddr_in serveraddr;
-	
-//	Create a socket descriptor
-	
-	if((listenfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-		return -1;
-	// AF_INET: internet; SOCK_STREAM: reliable; 0: normal
-	
-	Allow reuse of address
-	
-	if(setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR,(const void*)&optval ,sizeof(int)) < 0)
-		return-1;
-	
-	let listenfd be an endpoint for all requests
-	to port on any IP address for this host
-	
-	bzero((char*) &serveraddr,sizeof(serveraddr));
-	serveraddr.sin_family = AF_INET;
-	serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	serveraddr.sin_port = htons((unsigned short)port);
-	if(bind(listenfd,(SA*)&serveraddr, sizeof(serveraddr)) < 0)
-		return -1;
-	
-	Ready listenfd to accept connection requests
-	
-	if(listen(listenfd, LISTENQ) < 0)
-		return -1;
-	return listenfd;
-}// open_listenfd
-*/
 //void echo(int connfd);
 
 
@@ -50,13 +18,14 @@ void echo(int connfd)
 	printf("server received %d bytes\n", (int)n);
 	Rio_writen(connfd, buf, n);
     }
+
 }
 /* $end echo */
 
 
 
 
-int main(int argc, char **argv) 
+int main(int argc, char **argv)
 {
     int listenfd, connfd, listenPort;
     socklen_t clientlen;
@@ -64,12 +33,12 @@ int main(int argc, char **argv)
     struct hostent *clientHostEntry;
     char *clientIP;
     unsigned short clientPort;
-    if (argc != 2) {
-	fprintf(stderr, "usage: %s <port>\n", argv[0]);
+    if (argc != 3) {
+	fprintf(stderr, "usage: %s <port> <SecretKey>\n", argv[0]);
 	exit(0);
     }
     listenPort = atoi(argv[1]);
-
+    SecretKey = atoi(argv[2]);
     listenfd = open_listenfd(listenPort);
     while (1) { //loop forever awaiting connection
 	clientlen = sizeof(clientAddr);
@@ -83,7 +52,7 @@ int main(int argc, char **argv)
 	clientIP = inet_ntoa(clientAddr.sin_addr);
 	clientPort = ntohs(clientAddr.sin_port);
 	printf("server connected to %s (%s) on my new clientPort %u\n", clientHostEntry->h_name, clientIP, clientPort);
-
+	
 	echo(connfd); //read and then write
 	Close(connfd);
     }
