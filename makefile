@@ -1,4 +1,4 @@
-CFLAGS = -Wall
+CFLAGS = -Wall -g
 LDLIBS = -lpthread
 
 SERVER = smalld
@@ -15,9 +15,12 @@ csapp.c:
 
 csapp.o: csapp.h csapp.c
 
+smallLib.o: smallLib.h smallLib.c
+	gcc $(CFLAGS) -c smallLib.c
+
 $(SERVER): csapp.o
-$(CLIENTS): csapp.o
+$(CLIENTS): csapp.o smallLib.o
 
 .PHONY: clean
 clean:
-	/bin/rm -rf csapp.h csapp.c *.o smalld smallSet smallGet smallDigest smallRun
+	/bin/rm -rf csapp.h csapp.c *.o smalld smallSet smallGet smallDigest smallRun smallLib

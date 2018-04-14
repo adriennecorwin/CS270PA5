@@ -3,7 +3,7 @@
  */
 /* $begin echoclientmain */
 #include "csapp.h"
-
+#include "smallLib.h"
 
 /*
 int open_clientfd(char *hostname, int port) {
@@ -30,27 +30,102 @@ int open_clientfd(char *hostname, int port) {
         }
         return toserverfd;
 } // open_clientfd
-
 */
 
 
 
+//typedef struct g g;
+
+/*struct Set
+{
+
+unsigned int secret;
+
+short set;
+
+short padding;
+
+char variable[15];
+
+short length;
+
+char *val;
+
+
+};
+
+*/
+
+
+/*
+int smallSet(char* buf, char *MachineName, int port, int SecretKey, char *variableName, char *value, int dataLength)
+{
+
+struct Set info;
+info.secret = htonl(SecretKey);
+info.set = htons(0);
+info.padding = htons(1);
+
+for (int index = 0; index < strlen(variableName); index += 1)
+{
+
+info.variable[index] = variableName[index];
+
+}
+
+//i.variable = variableName;
+info.length = htons(dataLength);
+info.val = value;
+
+
+
+ int clientfd;
+ rio_t rio;
+ struct hostent *hp;
+    struct sockaddr_in serveraddr;
+
+ clientfd = Open_clientfd(MachineName, port);
+    Rio_readinitb(&rio, clientfd);
+bzero(buf, MAXLINE);
+    while (Fgets(buf, MAXLINE, stdin) != NULL) {
+        Rio_writen(clientfd, buf, strlen(buf));
+bzero(buf, MAXLINE);
+        Rio_readlineb(&rio, buf, MAXLINE);
+        Fputs(buf, stdout);
+    }
+    Close(clientfd); //line:netp:echoclient:close
+
+
+return clientfd;
+
+}
+
+*/
 
 
 int main(int argc, char **argv) 
 {
-    int clientfd, port;
-    char *host, buf[MAXLINE];
-    rio_t rio;
+    int port, SecretKey, length = 0;
+    char *host, buf[MAXLINE], *var_name, *value;
+//    rio_t rio;
 
-    if (argc != 3) {
+   if (argc != 6) {
 	fprintf(stderr, "usage: %s <host> <port>\n", argv[0]);
 	exit(0);
     }
+else{
+printf("HIII\n");
     host = argv[1];
     port = atoi(argv[2]);
+SecretKey = atoi(argv[3]);
+var_name = argv[4];
+value = argv[5];
+//length = atoi(argv[6]);
 
-    clientfd = Open_clientfd(host, port);
+printf("HIIIIIIII\n");
+int delta = smallSet(host, port, SecretKey, var_name, value, length);
+//int secret = atoi(argv[3]);
+/*    clientfd = Open_clientfd(host, port);
     Rio_readinitb(&rio, clientfd);
 
     while (Fgets(buf, MAXLINE, stdin) != NULL) {
@@ -59,6 +134,16 @@ int main(int argc, char **argv)
 	Fputs(buf, stdout);
     }
     Close(clientfd); //line:netp:echoclient:close
-    exit(0);
+  */ 
+
+if (delta < 0)
+{
+
+printf("error\n");
+
+}
+printf("server = %s\n", buf);
+ exit(0);
+}
 }
 /* $end echoclientmain */
