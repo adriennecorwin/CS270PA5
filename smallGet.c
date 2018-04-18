@@ -5,55 +5,54 @@
 #include "csapp.h"
 #include "smallLib.h"
 
-
-
-
-
-
-
-
-
-
 int main(int argc, char **argv)
 {
-    int port, SecretKey;//, *length;
-    char *host, buf[MAXLINE], *var_name, *value;
-//    rio_t rio;
+	size_t n;
+	int port, secretKey;//, *length;
+	char *host, *variableName, *value;
+	short dataLength;
+	//    rio_t rio;
 
-   if (argc != 5) {
-        fprintf(stderr, "usage: %s <host> <port>\n", argv[0]);
-        exit(0);
-    }
-else{
-    host = argv[1];
-    port = atoi(argv[2]);
-SecretKey = atoi(argv[3]);
-var_name = argv[4];
-//value = argv[5];
-int *length;
-//length = (int)atoi(argv[6]);
-int delta = smallGet(host, port, SecretKey, var_name, value, length);
-//int secret = atoi(argv[3]);
-/*    clientfd = Open_clientfd(host, port);
-    Rio_readinitb(&rio, clientfd);
+	if (argc != 5) {
+		fprintf(stderr, "usage: %s <host> <port>\n", argv[0]);
+		exit(0);
+	}
+	else{
+		host = argv[1];
+		port = atoi(argv[2]);
+		secretKey = atoi(argv[3]);
+		variableName = argv[4];
+		//value = argv[5];
 
-    while (Fgets(buf, MAXLINE, stdin) != NULL) {
-        Rio_writen(clientfd, buf, strlen(buf));
-        Rio_readlineb(&rio, buf, MAXLINE);
-        Fputs(buf, stdout);
-    }
-    Close(clientfd); //line:netp:echoclient:close
-  */
+		dataLength = (short)atoi(argv[6]);
+		//char value[dataLength-1];
+		//rio_t rio;
+		int delta = smallGet(host, port, secretKey, variableName, value, &dataLength);
+		//Rio_readinitb(&rio, delta);
+		//char value[15];
+		//n = Rio_readnb(&rio, value, strlen(value));
+		//printf("%s\n", value);
+		//int secret = atoi(argv[3]);
+		/*    clientfd = Open_clientfd(host, port);
+		      Rio_readinitb(&rio, clientfd);
 
-if (delta < 0)
-{
+		      while (Fgets(buf, MAXLINE, stdin) != NULL) {
+		      Rio_writen(clientfd, buf, strlen(buf));
+		      Rio_readlineb(&rio, buf, MAXLINE);
+		      Fputs(buf, stdout);
+		      }
+		      Close(clientfd); //line:netp:echoclient:close
+		 */
 
-printf("error\n");
+		if (delta < 0)
+		{
 
-}
-printf("server = %s\n", buf);
- exit(0);
-}
+			printf("error\n");
+
+		}
+		//printf("server = %s\n", buf);
+		exit(0);
+	}
 }
 /* $end echoclientmain */
 

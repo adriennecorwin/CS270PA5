@@ -7,7 +7,8 @@
 
 int main(int argc, char **argv)
 {
-    int port, SecretKey, *result_length;
+    int port, SecretKey, resultLength;
+	short dataLength;
     char *host, buf[MAXLINE], *data, *result;
 //    rio_t rio;
 
@@ -21,9 +22,9 @@ else{
 SecretKey = atoi(argv[3]);
 data = argv[4];
 //value = argv[5];
-int data_length;
-//length = (int)atoi(argv[6]);
-int delta = smallDigest(host, port, SecretKey, data, data_length, result, result_length);
+
+dataLength = (int)atoi(argv[6]);
+int delta = smallDigest(host, port, SecretKey, data, dataLength, result, &resultLength);
 //int secret = atoi(argv[3]);
 /*    clientfd = Open_clientfd(host, port);
     Rio_readinitb(&rio, clientfd);

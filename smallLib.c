@@ -1,6 +1,11 @@
 #include "smallLib.h"
 #include "csapp.h"
 
+
+#define MAXVARNAME 15
+#define MAXVARVAL 100
+
+//General information passed to server from each client application
 struct General {
 
 	unsigned int secret;
@@ -10,118 +15,98 @@ struct General {
 	short padding;
 };
 
+//information passed to the server from smallSet
 struct Set {
 
-	char variable[15];
+	char variable[MAXVARNAME];
 
 	short length;
 
 };
 
+//information passed to the server from smallGet
 struct Get {
-	char variable[15];
+	char variable[MAXVARNAME];
 };
 
+struct Digest
+{
+	short length;
+
+};
+
+//General information received from server and passed back to each application called
 struct GenRec {
 	char status;
 	char padding[3];
 };
 
+//Result length received from server and passed to either smllGet or smallDigest
 struct RecLen{
 	short length;
 };
 
-struct Digest
-{       
-        unsigned int secret;
-        
-        short set;
-        
-        short padding;
-        
-        short length;
-        
-        char *val;
-
-
-};
-
 int smallSet(char *MachineName, int port, int SecretKey, char *variableName, char *value, int dataLength)
 {
-	//printf("%i\n", dataLength);
-	struct General data;
-	struct Set info;
-	char *val;
-	data.secret = htonl(SecretKey);
-	data.request = htons(0);
-	data.padding = htons(1);
-	strncpy(info.variable, variableName, strlen(variableName));
-	/*for (int index = 0; index < strlen(variableName); index += 1){
-		info.variable[index] = variableName[index];
-	}*/
-	info.length = htons(dataLength);
-	/*for (int index = 0; index < strlen(value); index += 1){
-		info.val[index] = value[index];
-	}*/
-	//strncpy(val, value, strlen(value));
+	struct General genInfo;
+	struct Set setInfo;
+	genInfo.secret = htonl(SecretKey);
+	genInfo.request = htons(0);
+	genInfo.padding = htons(1);
+	if(strlen(variableName)<=MAXVARNAME){
+		strncpy(setInfo.variable, variableName, strlen(variableName));
+	}
+	else{
+		printf("variable names must be 15 characters or less\n");
+		return -1;
+	}
+	setInfo.length = htons(dataLength);
 	int clientfd;
 	rio_t rio;
-	// struct hostent *hp;
-	//  struct sockaddr_in serveraddr;
-//	printf("%s\n", info.val);
-	//printf("%i\n", info.length);
 	clientfd = Open_clientfd(MachineName, port);
 	Rio_readinitb(&rio, clientfd);
-	//bzero(&data, sizeof(data));
-	Rio_writen(clientfd, &data, sizeof(data));
-	//printf("%i\n", sizeof(info));
-	//printf("%s\n", value);
-	Rio_writen(clientfd, &info, sizeof(info));
-	Rio_writen(clientfd, value, dataLength+1);
-	//Rio_readlineb(&rio, buf, MAXLINE);
-	//  Fputs(buf, stdout);
-	//}
+	Rio_writen(clientfd, &genInfo, sizeof(genInfo));
+	Rio_writen(clientfd, &setInfo, sizeof(setInfo));
+	if (strlen(value)<=MAXVARVAL){
+		Rio_writen(clientfd, value, dataLength+1);
+	}
+	else{
+		printf("variable values must be 100 characters or less\n");
+		return -1;
+	}
 	Close(clientfd); //line:netp:echoclient:close
 	return clientfd;
 }
 
-int smallGet(char *MachineName, int port, int SecretKey, char *variableName, int *resultLength)
+int smallGet(char *MachineName, int port, int SecretKey, char *variableName, char *value, short *resultLength)
 {
-        int clientfd;
-        rio_t rio;
+	int clientfd;
+	rio_t rio;
 	struct General genInfo;
 	struct Get getInfo;
 	struct GenRec receiveGet;
 	struct RecLen getLen;
-        // struct hostent *hp;
-        //  struct sockaddr_in serveraddr;
 	strcpy(getInfo.variable, variableName);
-        genInfo.secret = htonl(SecretKey);
-        genInfo.request = htons(1);
-        genInfo.padding = htons(1);
-        clientfd = Open_clientfd(MachineName, port);
-        Rio_readinitb(&rio, clientfd);
-        //bzero(buf, MAXLINE);
-        //  while (Fgets(buf, MAXLINE, stdin) != NULL) {
-//	printf("%s\n", variableName);
+	genInfo.secret = htonl(SecretKey);
+	genInfo.request = htons(1);
+	genInfo.padding = htons(1);
+	clientfd = Open_clientfd(MachineName, port);
+	Rio_readinitb(&rio, clientfd);
 	Rio_writen(clientfd, &genInfo, sizeof(genInfo));
-//	printf("%i\n", sizeof(variableName));
-        Rio_writen(clientfd, &getInfo, sizeof(getInfo));
-        //bzero(buf, MAXLINE);
-        //  Rio_readlineb(&rio, buf, MAXLINE);
-        //Fputs(buf, stdout);
-        //}
+	Rio_writen(clientfd, &getInfo, sizeof(getInfo));
 	size_t n;
 	n = Rio_readnb(&rio, &receiveGet, sizeof(receiveGet));
 	n = Rio_readnb(&rio, &getLen, sizeof(getLen));
-	*resultLength = ntohs(getLen.length);
-	char value[*resultLength-1];
-	n = Rio_readnb(&rio, value, sizeof(value));
+	*resultLength = htons(getLen.length);
+	value=malloc(*resultLength-1);
+	printf("%i\n", *resultLength);
+	n = Rio_readnb(&rio, value, *resultLength+1);
+	printf("server received %d bytes\n", (int)n);
 	if (receiveGet.status==0){
 		printf("%s\n", value);
 	}
-        Close(clientfd); //line:netp:echoclient:close
-        return clientfd;
+	Close(clientfd); //line:netp:echoclient:close
+	return clientfd;
 
 
 
@@ -129,28 +114,30 @@ int smallGet(char *MachineName, int port, int SecretKey, char *variableName, int
 
 }
 
-int smallDigest(char *MachineName, int port, int SecretKey, char *data, int dataLength, char *result, int *resultLength)
+int smallDigest(char *MachineName, int port, int SecretKey, char *data, short dataLength, char *result, int *resultLength)
 {
 
-        int clientfd;
-        rio_t rio;
-        struct Digest info;
-        info.secret = htonl(SecretKey);
-        info.set = htons(2);
-        info.padding = htons(1);
+	int clientfd;
+	rio_t rio;
+	struct General genInfo;
+	struct Digest digestInfo;
+	genInfo.secret = htonl(SecretKey);
+	genInfo.request = htons(2);
+	genInfo.padding = htons(1);
 
 
-        info.length = htons(dataLength);
-        info.val = data;
+	digestInfo.length = htons(dataLength);
+	//strncpy(digestInfo.val, data, dataLength);
 
- clientfd = Open_clientfd(MachineName, port);
-        Rio_readinitb(&rio, clientfd);
- Rio_writen(clientfd, &info, sizeof(info));
+	clientfd = Open_clientfd(MachineName, port);
+	Rio_readinitb(&rio, clientfd);
+	Rio_writen(clientfd, &genInfo, sizeof(genInfo));
+	Rio_writen(clientfd, &digestInfo, sizeof(digestInfo));
+	Rio_writen(clientfd, data, dataLength+1);
+	Close(clientfd); //line:netp:echoclient:close
 
- Close(clientfd); //line:netp:echoclient:close
 
-
-        return clientfd;
+	return clientfd;
 
 
 
