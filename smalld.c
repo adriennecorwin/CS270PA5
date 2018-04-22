@@ -1,14 +1,11 @@
-/* 
- * echoserveri.c - An iterative echo server 
- */ 
-/* $begin echoserverimain */
+//smalld server
+
 #include "csapp.h"
 
 #define MAXVARNUM 1000 //can set 1000 variables per server run
 #define MAXVARVAL 100 //variable values limited to 255 characters
 #define MAXVARNAME 15 //variable names limited to 15 characters
-
-//void echo(int connfd);
+#define COMMANDLEN 31 //base length of digest command
 
 //General information received from every client request
 struct General{
@@ -36,9 +33,9 @@ struct Get{
 
 };
 
+//information received from smallDigest client
 struct Digest {
 	short length;
-	char *val;
 };
 
 //general information sent back to client
@@ -52,114 +49,154 @@ struct ExtraSend{
 	short length;
 };
 
+//serves smallSet request
 void serveSet(int connfd, rio_t rio, char **varNames, char **varVals, int *numVars){
-	size_t n;
-	short length = 0;
+	size_t readStruct, readVal;
+	short length = 0; //holds length of variable value
 	struct Set receiveSet;
 	struct GenSend genSet;
-	n = Rio_readnb(&rio, &receiveSet, sizeof(receiveSet));
-	length = ntohs(receiveSet.length);
-	char val[length-1];
-//	printf("server received %d bytes\n", (int)n);
-	n = Rio_readnb(&rio, val, length+1);
-	printf("Detail = %s: %s\n", receiveSet.variable, val);
-//	printf("server received %d bytes\n", (int)n);
-	int matchIndex=0;
-	while(matchIndex<*numVars && strcmp(receiveSet.variable, varNames[matchIndex])!=0){
-		matchIndex+=1;
+	readStruct = Rio_readnb(&rio, &receiveSet, sizeof(receiveSet)); //read struct sent from smallSet client
+	if(readStruct<0){ //if failed to read
+		genSet.status=-1; //fail status
 	}
-	if(matchIndex!=*numVars){
-                strncpy(varVals[matchIndex], val, MAXVARVAL);
+	length = ntohs(receiveSet.length); //length of value = length from struct
+	char val[length-1];
+	readVal = Rio_readnb(&rio, val, length+1); //read variable value from smallSet
+	//printf("server received %d bytes\n", (int)readVal);
+	if(readVal<0){ //if failed to read
+		genSet.status=-1; //fail status
+	}
+	printf("Detail = %s: %s\n", receiveSet.variable, val);
+	int matchIndex=0; //holds index of matching variable name in variable name array
+	while(matchIndex<*numVars && strcmp(receiveSet.variable, varNames[matchIndex])!=0){
+		matchIndex+=1; //find index of matching variable name in variable name array
+	}
+	if(matchIndex!=*numVars){ //if variable is already set
+                strncpy(varVals[matchIndex], val, MAXVARVAL); //reassign variable value
 		genSet.status=0;
-		for(int paddingIndex=0; paddingIndex<3; paddingIndex+=1){
+		for(int paddingIndex=0; paddingIndex<3; paddingIndex+=1){ //make padding for struct
 			genSet.padding[paddingIndex]=1;
 		}
-		Rio_writen(connfd, &genSet, sizeof(genSet));
+		Rio_writen(connfd, &genSet, sizeof(genSet)); //send struct back to client
         }
-	else{
-		*numVars+=1;
-		strncpy(varNames[*numVars-1], receiveSet.variable, strlen(receiveSet.variable));
-		strncpy(varVals[*numVars-1], val, strlen(val));
-		genSet.status=0;
-		for(int paddingIndex=0; paddingIndex<3; paddingIndex+=1){
+	else{ //no variable with this name has been set yet
+		*numVars+=1; //increment number of variables by one
+		printf("%i\n", *numVars);
+		strncpy(varNames[*numVars-1], receiveSet.variable, strlen(receiveSet.variable)+1); //add variable name to variable name array
+		strncpy(varVals[*numVars-1], val, strlen(val)+1); //add variable value to variable value array (in corresponding index --parallel arrays)
+		genSet.status=0; //success status
+		for(int paddingIndex=0; paddingIndex<3; paddingIndex+=1){ //make padding for struct
                         genSet.padding[paddingIndex]=1;
                 }
-		Rio_writen(connfd, &genSet, sizeof(genSet));
+		Rio_writen(connfd, &genSet, sizeof(genSet)); //send struct back to client
 	}
-//	printf("%s\n", varNames[0]);
-	printf("Completion = success\n");
-	//store in parallel arrays
+	if(genSet.status==0){
+		printf("Completion = success\n"); //print success message
+	}
+	else{
+		printf("Completion = failed\n"); //print failure message
+	}
+	printf("%i\n", *numVars);
+
+	//printf("%s\n", varNames[0]);
 }
 
+//serves smallGet
 void serveGet(int connfd, rio_t rio, char **varNames, char **varVals, int *numVars){
-	size_t n;
+	size_t readStruct;
+	printf("%s\n", varNames[0]);
 	struct Get receiveGet;
 	struct GenSend genGet;
 	struct ExtraSend extraGet;
-	int matchIndex=0;
-	for(int paddingIndex=0; paddingIndex<3; paddingIndex+=1){
+	int matchIndex=0; //holds index of matching variable name in variable name array
+	for(int paddingIndex=0; paddingIndex<3; paddingIndex+=1){ //make padding for struct
                         genGet.padding[paddingIndex]=1;
         }
-//	printf("%i\n", sizeof(genGet.padding));
 	//char name[15];
-	n = Rio_readnb(&rio, &receiveGet, sizeof(receiveGet));
-	//n = Rio_readnb(&rio, name, strlen(name));
-//	printf("%s\n", receiveGet.variable);
-//	printf("server received %d bytes\n", (int)n);
-	/*while(matchIndex<*numVars && strcmp(name, varNames[matchIndex])!=0){
-		matchIndex+=1;
+	readStruct = Rio_readnb(&rio, &receiveGet, sizeof(receiveGet)); //read variable name from client
+	if(readStruct<0){ //if read fails
+		genGet.status=-1; //fail status
 	}
-	if(matchIndex!=*numVars){
-		Rio_writen(connfd, varVals[matchIndex], strlen(varVals[matchIndex]));
-	}
-	else{
-		printf("Error: variable %s does not exist\n", name);
-	}*/
-	while(matchIndex<*numVars && strcmp(receiveGet.variable, varNames[matchIndex])!=0){
+	printf("Detail = %s\n", receiveGet.variable); 
+	while(matchIndex<*numVars && strcmp(receiveGet.variable, varNames[matchIndex])!=0){ //find index of matching variable name
                 matchIndex+=1;
         }
-        if(matchIndex!=*numVars){
-		genGet.status=0;
-		extraGet.length=ntohs(strlen(varVals[matchIndex]));
-//		printf("%i\n", extraGet.length);
-		Rio_writen(connfd, &genGet, sizeof(genGet));
-		Rio_writen(connfd, &extraGet, sizeof(extraGet));
-                Rio_writen(connfd, varVals[matchIndex], strlen(varVals[matchIndex])+1);
+        if(matchIndex!=*numVars){ //if matching variable exists in variable name arrays
+		genGet.status=0; //success status
+		printf("Completion = success\n");
+		extraGet.length=ntohs(strlen(varVals[matchIndex])); //set length = length of value of variable
+		Rio_writen(connfd, &genGet, sizeof(genGet)); //send struct back to client
+		Rio_writen(connfd, &extraGet, sizeof(extraGet)); //send length of value back to client
+                Rio_writen(connfd, varVals[matchIndex], strlen(varVals[matchIndex])+1); //send value of variable back to client
         }
-        else{
-		genGet.status=-1;
-		Rio_writen(connfd, &genGet, sizeof(genGet));
-                printf("Error: variable %s does not exist\n", receiveGet.variable);
+        else{ //if no variable with requested name exists in variable name array
+		genGet.status=-1; //failure status
+		printf("Completion = failure\n");
+		Rio_writen(connfd, &genGet, sizeof(genGet)); //send struct back to client
         }
-
-	//find matching name in parallel arrays and get corresponding value
-	//send value to client
 	
 }
 
+//serves smallDigest
 void serveDigest(int connfd, rio_t rio){
-	size_t n;
+	size_t readStruct, readVal;
 	short length;
 	struct Digest receiveDigest;
-	n = Rio_readnb(&rio, &receiveDigest, sizeof(receiveDigest));
+	struct ExtraSend extraDigest;
+	struct GenSend genDigest;
+	FILE *fd;
+	char digestResult[MAXVARVAL];
+	for(int paddingIndex=0; paddingIndex<3; paddingIndex+=1){
+                genDigest.padding[paddingIndex]=1;
+        }
+	readStruct = Rio_readnb(&rio, &receiveDigest, sizeof(receiveDigest)); //read struct from smallDigest client
+	if(readStruct<0){ //if read fails
+		genDigest.status=-1; //fail status
+	}
 	length = ntohs(receiveDigest.length);
 	char val[length-1];
-	n = Rio_readnb(&rio, val, length+1);
+	readVal = Rio_readnb(&rio, val, length+1);
+	if(readVal<0){
+		genDigest.status=-1;
+	}
+	printf("Detail = %s\n", val);
+	char command[COMMANDLEN+length];
+	sprintf(command, "/bin/echo %s | /usr/bin/sha256sum", val);
+	fd = popen(command, "r");
+	if(fd =='\0'){
+		genDigest.status=-1;
+	}
+	if(fgets(digestResult, MAXVARVAL, fd)=='\0'){
+		genDigest.status=-1;
+	}
+	else{
+		genDigest.status=0;
+	}
+	short size = strlen(digestResult);
+	digestResult[size]='\0';
+	pclose(fd);
+	extraDigest.length = htons(size);
+	Rio_writen(connfd, &genDigest, sizeof(genDigest));
+        Rio_writen(connfd, &extraDigest, sizeof(extraDigest));
+        Rio_writen(connfd, digestResult, size+1);
+	size = 0;
+	if(genDigest.status==0){
+		printf("Completion = success\n");
+	}
+	else if(genDigest.status==-1){
+		printf("Completion = failure\n");
+	}
 }	
 
 int main(int argc, char **argv)
 {
-	int listenfd, connfd, listenPort, clientSecretKey, numVars=0;
+	int listenfd, connfd, listenPort, serverSecretKey, clientSecretKey, numVars=0;
 	short requestType;
-	int serverSecretKey;
 	socklen_t clientlen;
 	struct sockaddr_in clientAddr;
-	struct hostent *clientHostEntry;
-	char *clientIP;
-	unsigned short clientPort;
-	size_t n;
+	rio_t rio;
+	size_t readGenStruct;
 	struct General receiveGen;
-	struct Set receiveSet;
 	char **varNames = (char**)malloc(MAXVARNUM*sizeof(char*)); //initialize 2D array to store variable names
 	for (int i=0; i<MAXVARNUM; i++){
 		varNames[i]=(char*)malloc(MAXVARNAME*sizeof(char));
@@ -168,12 +205,10 @@ int main(int argc, char **argv)
 	for (int i=0; i<MAXVARNUM; i++){
 		varVals[i]=(char*)malloc(MAXVARVAL*sizeof(char));
 	}
-	rio_t rio;
 	if (argc != 3) {
 		fprintf(stderr, "usage: %s <port> <SecretKey>\n", argv[0]);
 		exit(0);
 	}
-
 	listenPort = atoi(argv[1]);
 	serverSecretKey = atoi(argv[2]);
 	listenfd = open_listenfd(listenPort);
@@ -182,31 +217,30 @@ int main(int argc, char **argv)
 		connfd = Accept(listenfd, (SA *)&clientAddr, &clientlen);
 		if (connfd<1){
 			perror("accept error");
-		}
-		/* Determine the domain name and IP address of the client */
-		clientHostEntry = Gethostbyaddr((const char *)&clientAddr.sin_addr.s_addr, sizeof(clientAddr.sin_addr.s_addr), AF_INET);
-		clientIP = inet_ntoa(clientAddr.sin_addr);
-		clientPort = ntohs(clientAddr.sin_port);
-		printf("server connected to %s (%s) on my new clientPort %u\n", clientHostEntry->h_name, clientIP, clientPort);	
+		}	
 		Rio_readinitb(&rio, connfd);
-		n = Rio_readnb(&rio, &receiveGen, sizeof(receiveGen)); 
-		printf("server received %d bytes\n", (int)n);
-		clientSecretKey = ntohl(receiveGen.secret);
-		requestType = ntohs(receiveGen.request);
-		printf("\nSecret key = %i\n", clientSecretKey);
-		if(clientSecretKey!=serverSecretKey){
-			printf("Error: Secret keys do not match\n");
+		readGenStruct = Rio_readnb(&rio, &receiveGen, sizeof(receiveGen)); 
+		printf("server received %d bytes\n", (int)readGenStruct);
+		clientSecretKey = ntohl(receiveGen.secret); //get secret key from client
+		requestType = ntohs(receiveGen.request); //get request type from client
+		printf("\nSecret key = %i\n", clientSecretKey); 
+		if(clientSecretKey!=serverSecretKey){ //if client and server secret keys don't match
+			printf("Error: Secret keys do not match\n"); //don't serve client
+			return -1;
 		}
-		if(requestType==0){	
-			printf("Request type = set\n");
-			serveSet(connfd, rio, varNames, varVals, &numVars);
+		if(requestType==0){	//if server got a smallSet request
+			printf("Request type = set\n"); 
+			printf("%i\n", numVars);
+			serveSet(connfd, rio, varNames, varVals, &numVars); //serve smallSet
+			printf("%i\n", numVars);
 		}
-		else if(requestType==1){
+		else if(requestType==1){ //if server got a smallGet request
 			printf("Request type = get\n");
-			serveGet(connfd, rio, varNames, varVals, &numVars);
+			serveGet(connfd, rio, varNames, varVals, &numVars); //serve smallGet
 		}
-		else if(requestType==2){
+		else if(requestType==2){ //if server got a smallDigest request 
 			printf("Request type = digest\n");
+			serveDigest(connfd, rio);
 		}
 		else{
 			printf("Error\n");
@@ -215,7 +249,6 @@ int main(int argc, char **argv)
 		Close(connfd);
 	}
 
-//	exit(0);
+	exit(0);
 }
-/* $end echoserverimain */
 
