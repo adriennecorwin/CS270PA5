@@ -24,3 +24,7 @@ $(CLIENTS): csapp.o smallLib.o
 .PHONY: clean
 clean:
 	/bin/rm -rf csapp.h csapp.c *.o smalld smallSet smallGet smallDigest smallRun smallLib
+
+submit: smallSet.c smallGet.c smallDigest.c smalld.c smallLib.c smallLib.h makefile README.txt
+	tar -czf proj5.tgz smallSet.c smallGet.c smallDigest.c smalld.c smallLib.c smallLib.h makefile README.txt
+

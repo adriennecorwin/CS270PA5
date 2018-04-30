@@ -147,40 +147,40 @@ int smallDigest(char *MachineName, int port, int SecretKey, char *data, short da
 	int clientfd;
 	rio_t rio;
 	size_t readStruct1, readStruct2, readResult;
-	struct General genInfo;
-	struct Digest digestInfo;
-	struct GenRec receiveDigest;
-	struct RecLen getLen;
-	genInfo.secret = htonl(SecretKey);
-	genInfo.request = htons(2);
-	genInfo.padding = htons(1);
-	digestInfo.length = htons(dataLength);
+	struct General genInfo;//general info to send to server
+	struct Digest digestInfo;//info specific to digest to be sent to server
+	struct GenRec receiveDigest;//general info to receive from server
+	struct RecLen getLen;//info specific for digest to receive from server
+	genInfo.secret = htonl(SecretKey);//sends secret key to server
+	genInfo.request = htons(2);//sends the type of status request to server
+	genInfo.padding = htons(1);//sends padding to server
+	digestInfo.length = htons(dataLength);//sends length of data to server
 	clientfd = Open_clientfd(MachineName, port);
 	Rio_readinitb(&rio, clientfd);
-	Rio_writen(clientfd, &genInfo, sizeof(genInfo));
-	Rio_writen(clientfd, &digestInfo, sizeof(digestInfo));
-	Rio_writen(clientfd, data, dataLength+1);
-	readStruct1 = Rio_readnb(&rio, &receiveDigest, sizeof(receiveDigest));
+	Rio_writen(clientfd, &genInfo, sizeof(genInfo));//send general info to server
+	Rio_writen(clientfd, &digestInfo, sizeof(digestInfo));//send digest info to server
+	Rio_writen(clientfd, data, dataLength+1);//send the value (data) to server
+	readStruct1 = Rio_readnb(&rio, &receiveDigest, sizeof(receiveDigest));//read what is receivedd from server
 	if(receiveDigest.status == -1){
-		return -1;
+		return -1;//fail status
 	}
-	readStruct2 = Rio_readnb(&rio, &getLen, sizeof(getLen));
+	readStruct2 = Rio_readnb(&rio, &getLen, sizeof(getLen));//read data specific to digest from server
 	if (readStruct1<0 || readStruct2<0){
-		return -1;
+		return -1;//fail status
 	}
-	*resultLength = htons(getLen.length);
+	*resultLength = htons(getLen.length);//get length of result from server
 	char res[*resultLength-1];
-	readResult = Rio_readnb(&rio, res, *resultLength+1);
+	readResult = Rio_readnb(&rio, res, *resultLength+1);//get value of result from server
 	if (readResult<0){
-		return -1;
+		return -1;//fail status
 	}
-	strncpy(result, res, *resultLength+1);
-	if (receiveDigest.status==-1){
+	strncpy(result, res, *resultLength+1);//copy value received from server into result
+	if (receiveDigest.status==-1){//if failed, return fail status
                 Close(clientfd);
                 return -1;
         }
         else{
-                Close(clientfd);
+                Close(clientfd);//return success status
                 return 0;
         }
 }
